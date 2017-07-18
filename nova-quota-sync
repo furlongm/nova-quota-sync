@@ -16,8 +16,13 @@
 #    under the License.
 #
 
+from __future__ import print_function
+
 import argparse
-import ConfigParser
+try:
+    import configparser
+except ImportError:
+    import ConfigParser as configparser
 import sys
 
 from datetime import datetime
@@ -42,7 +47,7 @@ def makeConnection(db_url):
 
 def update_quota_usages(meta, usage):
     if usage['in_sync']:
-        print '[ERROR] already in sync'
+        print('[ERROR] already in sync')
         return
 
     instances = 0
@@ -176,8 +181,8 @@ def display(resources_usage, all_resources=False):
                             usage['cores'],
                             usage['ram'],
                             '\033[1m\033[92mOK\033[0m'])
-    print '\n'
-    print ptable
+    print('\n')
+    print(ptable)
 
 
 def analyse_project_user_usage(resources_usage):
@@ -234,9 +239,9 @@ def project_user_usage(meta, project):
     for (project_id, user_id) in quotas_usage_all:
         if project and project != project_id:
             continue
-        element = filter(lambda element:
-                         element['project_id'] == project_id and
-                         element['user_id'] == user_id, resources_usage)
+        element = [element for element in resources_usage if
+                   element['project_id'] == project_id and
+                   element['user_id'] == user_id]
         if not element:
             instances_quota_usage = 0
             cores_quota_usage = 0
@@ -345,7 +350,7 @@ def sync_resources(meta, resources_chk, auto_sync):
             if yn_choice():
                 update_quota_usages(meta, resource)
             else:
-                print '[skipping sync]'
+                print('[skipping sync]')
 
 
 def yn_choice():
@@ -354,9 +359,9 @@ def yn_choice():
     abort = set(['a', 'ab', 'abo', 'abor', 'abort'])
 
     text = 'Do you want to sync? [Yes/No/Abort]'
-    print text
+    print(text)
     while True:
-        choice = raw_input().lower()
+        choice = input().lower()
         if choice in yes:
             return True
         elif choice in no:
@@ -364,7 +369,7 @@ def yn_choice():
         elif choice in abort:
             sys.exit(1)
         else:
-            print text
+            print(text)
 
 
 def show_quota_resources(meta,
@@ -380,13 +385,13 @@ def show_quota_resources(meta,
 
 
 def get_db_url(config_file):
-    parser = ConfigParser.SafeConfigParser()
+    parser = configparser.SafeConfigParser()
     try:
         parser.read(config_file)
         db_url = parser.get('database', 'connection')
     except Exception as e:
         text = '[ERROR] check nova configuration file: {0}'.format(e.strerror)
-        print text
+        print(text)
         sys.exit(2)
     return db_url
 
@@ -421,7 +426,7 @@ def main():
         args = parse_cmdline_args()
     except Exception as e:
         text = 'Incorrect command line arguments. {0}'.format(e.strerror)
-        print text
+        print(text)
 
     db_url = get_db_url(args.config)
     nova_session, nova_metadata, nova_Base = makeConnection(db_url)

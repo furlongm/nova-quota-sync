@@ -184,21 +184,16 @@ def display(resources_usage, all_resources=False):
     print(ptable)
 
 
-def analyse_project_user_usage(resources_usage):
+def check_sync(resources_usage):
     for usage in resources_usage:
-        in_sync = True
-        if usage['instances'] != usage['instances_quota_usage']:
-            in_sync = False
-        elif usage['cores'] != usage['cores_quota_usage']:
-            in_sync = False
-        elif usage['ram'] != usage['ram_quota_usage']:
-            in_sync = False
-        usage['in_sync'] = in_sync
-
+        if usage['instances'] != usage['instances_quota_usage'] or \
+                usage['cores'] != usage['cores_quota_usage'] or \
+                usage['ram'] != usage['ram_quota_usage']:
+            usage['in_sync'] = False
     return resources_usage
 
 
-def project_user_usage(meta, project=None):
+def get_resource_usage(meta, project=None):
     resource_usage = []
 
     if project is None:
@@ -236,7 +231,7 @@ def project_user_usage(meta, project=None):
             resources['instances_quota_usage'] = quota_usages['instances']
             resources['cores_quota_usage'] = quota_usages['cores']
             resources['ram_quota_usage'] = quota_usages['ram']
-            resources['in_sync'] = None
+            resources['in_sync'] = True
             resource_usage.append(resources)
         except IndexError:
             resource_usage.append({
@@ -248,7 +243,7 @@ def project_user_usage(meta, project=None):
                 'instances_quota_usage': quota_usages['instances'],
                 'cores_quota_usage': quota_usages['cores'],
                 'ram_quota_usage': quota_usages['ram'],
-                'in_sync': None})
+                'in_sync': True})
 
     return resource_usage
 
@@ -311,49 +306,18 @@ def query_quota_usages(meta):
     return q.execute().fetchall()
 
 
-def sync_resources(meta, resources_chk, auto_sync):
-    for resource in resources_chk:
+def sync_resources(meta, resources):
+    for resource in resources:
         if resource['in_sync']:
             continue
-        if auto_sync:
+        else:
             update_quota_usages(meta, resource)
-        else:
-            display([resource])
-            if yn_choice():
-                update_quota_usages(meta, resource)
-            else:
-                print('[skipping sync]')
 
 
-def yn_choice():
-    yes = set(['yes', 'y', 'ye'])
-    no = set(['no', 'n'])
-    abort = set(['a', 'ab', 'abo', 'abor', 'abort'])
-
-    text = 'Do you want to sync? [Yes/No/Abort]'
-    print(text)
-    while True:
-        choice = input().lower()
-        if choice in yes:
-            return True
-        elif choice in no:
-            return False
-        elif choice in abort:
-            sys.exit(1)
-        else:
-            print(text)
-
-
-def show_quota_resources(meta,
-                         all_resources=False,
-                         no_sync=False,
-                         auto_sync=False,
-                         project_id=None):
-    resources = project_user_usage(meta, project_id)
-    resources_chk = analyse_project_user_usage(resources)
-    display(resources_chk, all_resources)
-    if not no_sync:
-        sync_resources(meta, resources_chk, auto_sync)
+def get_quota_resources(meta, project_id=None):
+    resources = get_resource_usage(meta, project_id)
+    resources = check_sync(resources)
+    return resources
 
 
 def get_nova_db_url(config_file):
@@ -373,17 +337,15 @@ def parse_cmdline_args():
     parser.add_argument(
         '-a', '--all',
         action='store_true',
+        default=False,
         help='show the state of all quota resources')
     parser.add_argument(
-        '-ns', '--no_sync',
+        '-s', '--sync',
         action='store_true',
-        help='don\'t perform any synchronization of the mismatched resources')
+        default=False,
+        help='perform synchronization of mismatched resources')
     parser.add_argument(
-        '-as', '--auto_sync',
-        action='store_true',
-        help='automatically sync all resources (non-interactive)')
-    parser.add_argument(
-        '-p', '--project_id',
+        '-p', '--project',
         type=str,
         help='operate only on this project ID')
     parser.add_argument(
@@ -402,11 +364,10 @@ def main():
     args = parse_cmdline_args()
     nova_db_url = get_nova_db_url(args.config)
     conn, meta = sql_connect(nova_db_url, args.debug)
-    show_quota_resources(meta,
-                         args.all,
-                         args.no_sync,
-                         args.auto_sync,
-                         args.project_id)
+    resources = get_quota_resources(meta, args.project)
+    display(resources, args.all)
+    if args.sync:
+        sync_resources(meta, resources)
     sql_disconnect(conn)
 
 

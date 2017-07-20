@@ -25,6 +25,7 @@ except ImportError:
     import ConfigParser as configparser
 import sys
 
+from colorama import Fore, Style
 from datetime import datetime
 from prettytable import PrettyTable
 from sqlalchemy import and_, create_engine, func, MetaData, select, Table
@@ -171,7 +172,7 @@ def display(resources_usage, all_resources=False):
                             instances,
                             cores,
                             ram,
-                            '\033[1m\033[91mMismatch\033[0m'])
+                            Fore.RED + 'Mismatch' + Style.RESET_ALL])
 
         if usage['in_sync'] and all_resources:
             ptable.add_row([usage['project_id'],
@@ -179,7 +180,7 @@ def display(resources_usage, all_resources=False):
                             usage['instances'],
                             usage['cores'],
                             usage['ram'],
-                            '\033[1m\033[92mOK\033[0m'])
+                            Fore.GREEN + 'OK' + Style.RESET_ALL])
     print('\n')
     print(ptable)
 

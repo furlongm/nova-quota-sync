@@ -32,6 +32,39 @@ from sqlalchemy import and_, create_engine, func, MetaData, select, Table
 from sqlalchemy.orm import sessionmaker
 
 
+class project_resource_usage(object):
+    def __init__(self, project_id, user_id):
+        self.project_id = project_id
+        self.user_id = user_id
+        self.qu = {
+            'instances': 0,
+            'cores': 0,
+            'ram': 0,
+            'security_groups': 0,
+            'server_groups': 0,
+            'floating_ips': 0}
+        self.nu = {
+            'instances': 0,
+            'cores': 0,
+            'ram': 0}
+        self.in_sync = True
+        self.status = 'OK'
+
+    def update_quota_usage(self, resource, value):
+        self.qu[resource] = value
+
+    def update_nova_usage(self, instances, cores, ram):
+        self.nu['instances'] = instances
+        self.nu['cores'] = cores
+        self.nu['ram'] = ram
+
+    def update_sync_status(self):
+        for resource in ['instances', 'cores', 'ram']:
+            if self.nu[resource] != self.qu[resource]:
+                self.in_sync = False
+                self.status = 'Mismatch'
+
+
 def sql_connect(db_url, debug):
     engine = create_engine(db_url, echo=debug)
     conn = engine.connect()

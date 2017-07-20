@@ -31,11 +31,13 @@ optional arguments:
 Examples
 --------
 
+```shell
 python nova-quota-sync --config my_nova.conf --all --sync
 
 python nova-quota-sync --config my_nova.conf
 
 python nova-quota-sync --all --no_sync --project "d945d5ce-cfb8-11e4-b9d6-1681e6b88ec1"
+```
 
 
 Nova versions supported

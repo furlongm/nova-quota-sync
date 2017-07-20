@@ -3,51 +3,48 @@ Nova Quota Sync
 
 What is it?
 -----------
-It's a small script that compares nova quota usage information with
+This is a small script that compares nova quota usage information with
 the actual usage per resource (tenant/user).
 
 It also provides an easy way to synchronize quotas in case of mismatch.
 
 
-How to use it?
---------------
-To see the available options run:
+Usage
+-----
 
-python nova-quota-sync -h
+```shell
+$ python nova-quota-sync -h
+usage: nova-quota-sync [-h] [-a] [-s] [-p PROJECT] [-c CONFIG] [-d]
 
-There 5 optional arguments: <br />
---all - show the state of all quota resources <br />
---no_sync - don't perform any synchronization of the mismatch resources <br />
---auto_sync - automatically sync all the resources (no interactive) <br />
---project_id - search only project ID <br />
---config - path for nova.conf or a file with the DB endpoint <br />
-
-If "--no_sync" or "auto_sync" are not used it will run in interactive
-mode.
+optional arguments:
+  -h, --help            show this help message and exit
+  -a, --all             show the state of all quota resources
+  -s, --sync            perform synchronization of mismatched resources
+  -p PROJECT, --project PROJECT
+                        operate only on this project ID
+  -c CONFIG, --config CONFIG
+                        path to nova configuration file
+  -d, --debug           enable debug mode
+```
 
 
 Examples
 --------
 
-python nova-quota-sync --config my_nova.conf --all --no_sync
+python nova-quota-sync --config my_nova.conf --all --sync
 
 python nova-quota-sync --config my_nova.conf
 
-python nova-quota-sync --auto_sync
-
-python nova-quota-sync --all --no_sync --project_id "d945d5ce-cfb8-11e4-b9d6-1681e6b88ec1"
+python nova-quota-sync --all --no_sync --project "d945d5ce-cfb8-11e4-b9d6-1681e6b88ec1"
 
 
 Nova versions supported
 -----------------------
-We use it in Havana and now in Icehouse.
+Tested up to Liberty
 
 
 Bugs and Disclaimer
 -------------------
 Bugs? Oh, almost certainly.
-
-This tool was written to be used in the CERN Cloud Infrastructure and
-it has been tested only in our environment.
 
 Since it updates nova DB use it with extreme caution.

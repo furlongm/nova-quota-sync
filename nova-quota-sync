@@ -358,7 +358,7 @@ def get_nova_db_url(config_file):
     return nova_db_url
 
 
-def parse_cmdline_args():
+def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument(
         '-a', '--all',
@@ -387,7 +387,7 @@ def parse_cmdline_args():
 
 
 def main():
-    args = parse_cmdline_args()
+    args = parse_args()
     nova_db_url = get_nova_db_url(args.config)
     conn, meta = sql_connect(nova_db_url, args.debug)
     resources = get_resource_usage(meta, args.project)

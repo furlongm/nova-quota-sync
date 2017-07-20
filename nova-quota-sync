@@ -198,144 +198,117 @@ def analyse_project_user_usage(resources_usage):
     return resources_usage
 
 
-def project_user_usage(meta, project):
-    resources_usage = []
-    if project:
-        resources_project_user_usage = resources_project_user_usage_projectid
+def project_user_usage(meta, project=None):
+    resource_usage = []
+
+    if project is None:
+        projects_q = query_projects_using_quota(meta)
     else:
-        resources_project_user_usage = resources_project_user_usage_all
+        projects_q = query_projects_using_quota(meta, project)
 
-    for (project_id, user_id, instances, cores, ram) in \
-            resources_project_user_usage(meta, project):
+    all_instances_q = query_instances(meta)
+    all_quota_usages_q = query_quota_usages(meta)
 
-        instances_quota_usage = 0
-        cores_quota_usage = 0
-        ram_quota_usage = 0
-
-        quota_usage = resources_project_user_quota_usage(meta,
-                                                         project_id,
-                                                         user_id)
-
-        for (quota_resource, quota_in_use) in quota_usage:
-            if quota_resource == 'instances':
-                instances_quota_usage = quota_in_use
-            elif quota_resource == 'cores':
-                cores_quota_usage = quota_in_use
-            elif quota_resource == 'ram':
-                ram_quota_usage = quota_in_use
-
-        resources_usage.append({'user_id': user_id,
-                                'project_id': project_id,
-                                'instances': instances,
-                                'cores': cores,
-                                'ram': ram,
-                                'instances_quota_usage': instances_quota_usage,
-                                'cores_quota_usage': cores_quota_usage,
-                                'ram_quota_usage': ram_quota_usage,
-                                'in_sync': None})
-
-    quotas_usage_all = resources_project_user_quota_usage_all(meta)
-    for (project_id, user_id) in quotas_usage_all:
-        if project and project != project_id:
+    for project_id, user_id in projects_q:
+        if user_id is None:
             continue
-        element = [element for element in resources_usage if
-                   element['project_id'] == project_id and
-                   element['user_id'] == user_id]
-        if not element:
-            instances_quota_usage = 0
-            cores_quota_usage = 0
-            ram_quota_usage = 0
+#            print(project_id)
 
-            quota_usage = resources_project_user_quota_usage(meta,
-                                                             project_id,
-                                                             user_id)
+        quota_usages = {
+            'instances': 0,
+            'cores': 0,
+            'ram': 0,
+            'security_groups': 0,
+            'server_groups': 0,
+            'floating_ips': 0,
+        }
 
-            for (quota_resource, quota_in_use) in quota_usage:
-                if quota_resource == 'instances':
-                    instances_quota_usage = quota_in_use
-                elif quota_resource == 'cores':
-                    cores_quota_usage = quota_in_use
-                elif quota_resource == 'ram':
-                    ram_quota_usage = quota_in_use
+        quota_usages_q = [x for x in all_quota_usages_q if
+                          x['project_id'] == project_id and
+                          x['user_id'] == user_id]
+        for _, _, resource, usage in quota_usages_q:
+            quota_usages[resource] += usage
 
-            resources_usage.append({'user_id': user_id,
-                                    'project_id': project_id,
-                                    'instances': 0,
-                                    'cores': 0,
-                                    'ram': 0,
-                                    'instances_quota_usage': instances_quota_usage,
-                                    'cores_quota_usage': cores_quota_usage,
-                                    'ram_quota_usage': ram_quota_usage,
-                                    'in_sync': None})
-    return resources_usage
+        try:
+            resources = dict([x for x in all_instances_q if
+                              x['project_id'] == project_id and
+                              x['user_id'] == user_id][0])
+            resources['instances_quota_usage'] = quota_usages['instances']
+            resources['cores_quota_usage'] = quota_usages['cores']
+            resources['ram_quota_usage'] = quota_usages['ram']
+            resources['in_sync'] = None
+            resource_usage.append(resources)
+        except IndexError:
+            resource_usage.append({
+                'user_id': user_id,
+                'project_id': project_id,
+                'instances': 0,
+                'cores': 0,
+                'ram': 0,
+                'instances_quota_usage': quota_usages['instances'],
+                'cores_quota_usage': quota_usages['cores'],
+                'ram_quota_usage': quota_usages['ram'],
+                'in_sync': None})
 
-
-def resources_project_user_usage_all(meta, project_id):
-    instances = Table('instances', meta, autoload=True)
-
-    resources_usage = select(
-        columns=[
-            instances.c.project_id,
-            instances.c.user_id,
-            func.count(instances.c.id),
-            func.sum(instances.c.vcpus),
-            func.sum(instances.c.memory_mb)],
-        whereclause=instances.c.deleted == 0,
-        group_by=[
-            instances.c.project_id,
-            instances.c.user_id])
-
-    return resources_usage.execute()
+    return resource_usage
 
 
-def resources_project_user_usage_projectid(meta, project_id):
-    instances = Table('instances', meta, autoload=True)
-
-    resources_usage = select(
-        columns=[
-            instances.c.project_id,
-            instances.c.user_id,
-            func.count(instances.c.id),
-            func.sum(instances.c.vcpus),
-            func.sum(instances.c.memory_mb)],
-        whereclause=and_(
-            instances.c.project_id == project_id,
-            instances.c.deleted == 0),
-        group_by=[
-            instances.c.project_id,
-            instances.c.user_id])
-
-    return resources_usage.execute()
-
-
-def resources_project_user_quota_usage_all(meta):
+def query_projects_using_quota(meta, project_id=None):
     quota_usages = Table('quota_usages', meta, autoload=True)
 
-    resource_quota_usage = select(
+    q = select(
         columns=[
-            quota_usages.c.project_id,
-            quota_usages.c.user_id],
-        whereclause=quota_usages.c.deleted == 0,
-        group_by=[
             quota_usages.c.project_id,
             quota_usages.c.user_id])
 
-    return resource_quota_usage.execute()
+    if project_id is not None:
+        q = q.where(quota_usages.c.project_id == project_id)
+
+    q = q.group_by(
+        quota_usages.c.project_id,
+        quota_usages.c.user_id)
+
+    return q.execute().fetchall()
 
 
-def resources_project_user_quota_usage(meta, project_id, user_id):
+def query_instances(meta):
+    instances = Table('instances', meta, autoload=True)
+
+    q = select(
+        columns=[
+            instances.c.project_id,
+            instances.c.user_id,
+            func.count(instances.c.id).label('instances'),
+            func.sum(instances.c.vcpus).label('cores'),
+            func.sum(instances.c.memory_mb).label('ram')])
+
+    q = q.where(instances.c.deleted == 0)
+
+    q = q.group_by(
+        instances.c.project_id,
+        instances.c.user_id)
+
+    return q.execute().fetchall()
+
+
+def query_quota_usages(meta):
     quota_usages = Table('quota_usages', meta, autoload=True)
 
-    resource_quota_usage = select(
+    q = select(
         columns=[
+            quota_usages.c.project_id,
+            quota_usages.c.user_id,
             quota_usages.c.resource,
-            quota_usages.c.in_use],
-        whereclause=and_(
-            quota_usages.c.user_id == user_id,
-            quota_usages.c.project_id == project_id,
-            quota_usages.c.deleted == 0))
+            func.sum(quota_usages.c.in_use).label('in_use')])
 
-    return resource_quota_usage.execute()
+    q = q.where(quota_usages.c.deleted == 0)
+
+    q = q.group_by(
+        quota_usages.c.project_id,
+        quota_usages.c.user_id,
+        quota_usages.c.resource)
+
+    return q.execute().fetchall()
 
 
 def sync_resources(meta, resources_chk, auto_sync):

@@ -342,16 +342,8 @@ def query_quota_usages(meta):
 
 def sync_resources(meta, resources):
     for resource in resources:
-        if resource['in_sync']:
-            continue
-        else:
+        if not resource.in_sync:
             update_quota_usages(meta, resource)
-
-
-def get_quota_resources(meta, project_id=None):
-    resources = get_resource_usage(meta, project_id)
-    resources = check_sync(resources)
-    return resources
 
 
 def get_nova_db_url(config_file):
@@ -398,10 +390,10 @@ def main():
     args = parse_cmdline_args()
     nova_db_url = get_nova_db_url(args.config)
     conn, meta = sql_connect(nova_db_url, args.debug)
-    resources = get_quota_resources(meta, args.project)
-    display(resources, args.all)
+    resources = get_resource_usage(meta, args.project)
     if args.sync:
         sync_resources(meta, resources)
+    display(resources, args.all)
     sql_disconnect(conn)
 
 

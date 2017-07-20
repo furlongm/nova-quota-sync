@@ -28,21 +28,20 @@ import sys
 from datetime import datetime
 from prettytable import PrettyTable
 from sqlalchemy import and_, create_engine, func, MetaData, select, Table
-from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 
 
-def makeConnection(db_url):
-    engine = create_engine(db_url)
-    engine.connect()
-    Session = sessionmaker(bind=engine)
-    thisSession = Session()
-    metadata = MetaData()
-    metadata.bind = engine
-    Base = declarative_base()
-    tpl = thisSession, metadata, Base
+def sql_connect(db_url, debug):
+    engine = create_engine(db_url, echo=debug)
+    conn = engine.connect()
+    sessionmaker(bind=engine)
+    meta = MetaData()
+    meta.bind = engine
+    return conn, meta
 
-    return tpl
+
+def sql_disconnect(conn):
+    conn.close()
 
 
 def update_quota_usages(meta, usage):
@@ -384,16 +383,16 @@ def show_quota_resources(meta,
         sync_resources(meta, resources_chk, auto_sync)
 
 
-def get_db_url(config_file):
+def get_nova_db_url(config_file):
     parser = configparser.SafeConfigParser()
     try:
         parser.read(config_file)
-        db_url = parser.get('database', 'connection')
+        nova_db_url = parser.get('database', 'connection')
     except Exception as e:
         text = '[ERROR] cannot parse nova configuration file: {0}'.format(e)
         print(text)
         sys.exit(2)
-    return db_url
+    return nova_db_url
 
 
 def parse_cmdline_args():
@@ -418,18 +417,24 @@ def parse_cmdline_args():
         '--config',
         default='/etc/nova/nova.conf',
         help='configuration file')
+    parser.add_argument(
+        '-d', '--debug',
+        action='store_true',
+        default=False,
+        help='enable debug mode')
     return parser.parse_args()
 
 
 def main():
     args = parse_cmdline_args()
-    db_url = get_db_url(args.config)
-    nova_session, nova_metadata, nova_Base = makeConnection(db_url)
-    show_quota_resources(nova_metadata,
+    nova_db_url = get_nova_db_url(args.config)
+    conn, meta = sql_connect(nova_db_url, args.debug)
+    show_quota_resources(meta,
                          args.all,
                          args.no_sync,
                          args.auto_sync,
                          args.project_id)
+    sql_disconnect(conn)
 
 
 if __name__ == '__main__':

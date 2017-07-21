@@ -14,7 +14,7 @@ Usage
 
 ```shell
 $ python nova-quota-sync -h
-usage: nova-quota-sync [-h] [-a] [-s] [-p PROJECT] [-c CONFIG] [-d]
+usage: nova-quota-sync [-h] [-a] [-s] [-p PROJECT] [-c CONFIG] [-q] [-d]
 
 optional arguments:
   -h, --help            show this help message and exit
@@ -24,6 +24,7 @@ optional arguments:
                         operate only on this project ID
   -c CONFIG, --config CONFIG
                         path to nova configuration file
+  -q, --quiet           silence warnings
   -d, --debug           enable debug mode
 ```
 
@@ -32,11 +33,11 @@ Examples
 --------
 
 ```shell
-python nova-quota-sync --config my_nova.conf --all --sync
+$ python nova-quota-sync --config my_nova.conf --all --sync
 
-python nova-quota-sync --config my_nova.conf
+$ python nova-quota-sync --config my_nova.conf
 
-python nova-quota-sync --all --no_sync --project "d945d5ce-cfb8-11e4-b9d6-1681e6b88ec1"
+$ python nova-quota-sync --all --quiet --project "d945d5ce-cfb8-11e4-b9d6-1681e6b88ec1"
 ```
 
 

@@ -80,43 +80,25 @@ def sql_disconnect(conn):
 
 def update_quota_usages(meta, usage):
     for resource in usage.nu:
-        if resource != usage.qu[resource]:
+        if usage.nu[resource] != usage.qu[resource]:
             update_quota_usages_db(meta,
                                    usage.project_id,
                                    usage.user_id,
                                    resource,
-                                   usage.qu.resource)
+                                   usage.nu[resource])
             usage.status = 'Fixed'
 
 
 def update_quota_usages_db(meta, project_id, user_id, resource, in_use):
     quota_usages = Table('quota_usages', meta, autoload=True)
     now = datetime.utcnow()
-    quota = select(
-        columns=[quota_usages.c.user_id],
-        whereclause=and_(quota_usages.c.user_id == user_id,
-                         quota_usages.c.project_id == project_id,
-                         quota_usages.c.resource == resource)
-                  ).execute().fetchone()
-
-    if not quota:
-        quota_usages.insert().values(
-            created_at=now,
-            updated_at=now,
-            project_id=project_id,
-            resource=resource,
-            in_use=in_use,
-            reserved=0,
-            deleted=0,
-            user_id=user_id).execute()
-    else:
-        quota_usages.update().where(
-            and_(
-                quota_usages.c.user_id == user_id,
-                quota_usages.c.project_id == project_id,
-                quota_usages.c.resource == resource
-                )
-            ).values(updated_at=now, in_use=in_use).execute()
+    quota_usages.update().where(
+        and_(
+            quota_usages.c.user_id == user_id,
+            quota_usages.c.project_id == project_id,
+            quota_usages.c.resource == resource
+            )
+        ).values(updated_at=now, in_use=in_use).execute()
 
 
 def display(resources_usage, all_resources=False):

@@ -143,7 +143,7 @@ def display(resources_usage, all_resources=False):
     print(ptable)
 
 
-def get_resource_usage(meta, project=None):
+def get_resource_usage(meta, project=None, quiet=False):
     resource_usage = []
 
     if project is None:
@@ -156,9 +156,10 @@ def get_resource_usage(meta, project=None):
 
     for project_id, user_id in projects_q:
         if user_id is None:
-            text = '[Warning] Project {0} '.format(project_id)
-            text += 'has resources belonging to a non-existent user'
-            print(text)
+            if not quiet:
+                text = '[Warning] Project {0} '.format(project_id)
+                text += 'has resources belonging to a non-existent user'
+                print(text)
             continue
 
         usage = project_resource_usage(project_id, user_id)
@@ -278,6 +279,11 @@ def parse_args():
         default='/etc/nova/nova.conf',
         help='path to nova configuration file')
     parser.add_argument(
+        '-q', '--quiet',
+        action='store_true',
+        default=False,
+        help='silence warnings')
+    parser.add_argument(
         '-d', '--debug',
         action='store_true',
         default=False,
@@ -289,7 +295,7 @@ def main():
     args = parse_args()
     nova_db_url = get_nova_db_url(args.config)
     conn, meta = sql_connect(nova_db_url, args.debug)
-    resource_usage = get_resource_usage(meta, args.project)
+    resource_usage = get_resource_usage(meta, args.project, args.quiet)
     if args.sync:
         sync_resource_usage(meta, resource_usage)
     display(resource_usage, args.all)

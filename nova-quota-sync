@@ -130,11 +130,13 @@ def display(resources_usage, all_resources=False):
     for usage in resources_usage:
         if not usage.in_sync:
             if usage.nu['instances'] != usage.qu['instances']:
-                instances = str(usage.qu['instances']) + ' -> ' + str(usage.nu['instances'])
+                instances = str(usage.qu['instances']) + ' -> ' + \
+                    str(usage.nu['instances'])
             else:
                 instances = usage.nu['instances']
             if usage.nu['cores'] != usage.qu['cores']:
-                cores = str(usage.qu['cores']) + ' -> ' + str(usage.nu['cores'])
+                cores = str(usage.qu['cores']) + ' -> ' + \
+                    str(usage.nu['cores'])
             else:
                 cores = usage.nu['cores']
             if usage.nu['ram'] != usage.qu['ram']:
